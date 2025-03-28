@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "EthRandomCheck": {
+      "commandName": "Project",
+      "commandLineArgs": "--adminUrl=http://localhost:5000 \r\n--resultsFile=results.json\r\n--rpcUrl=https://ethereum-rpc.publicnode.com\r\n--addrPerSeed=1\r\n--maxThreads=1\r\n--localPort=5001"
+    }
+  }
+}
