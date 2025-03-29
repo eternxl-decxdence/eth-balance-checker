@@ -22,21 +22,27 @@ namespace EthRandomCheck
 
             pipeWriter = new StreamWriter(pipeServer, Encoding.UTF8) { AutoFlush = true };
         }
-        public void Write(string message)
+        public async Task Write(string message)
         {
             if (pipeWriter == null)
             {
-              
                 return;
             }
-            pipeWriter.WriteLine(message);
-            pipeWriter.Flush();
+            try
+            {
+                await pipeWriter.WriteLineAsync(message);
+                await pipeWriter.FlushAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PIPE] Write failed: {ex}");
+            }
         }
         public void Stop()
         {
-            pipeWriter?.Close();
-            pipeServer?.Close();
-            pipeServer?.Dispose();
+            pipeWriter?.Flush();
+            pipeServer?.WaitForPipeDrain(); // Ждём, пока пайп опустеет
+            pipeWriter = null;
         }
     }
 }

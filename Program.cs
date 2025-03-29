@@ -121,22 +121,24 @@ class Program
         DataPipe AuxDataPipe = new("AuxDataPipe");
         await AuxDataPipe.Start();
 
-        Timer timer = new Timer(_ =>
+        _ = Task.Run(async () =>
         {
-            double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
-            // AuxDataPipe => electronIpc => ReactRenderComponent : Req. processed: {requestCount} Addr. generated: {generatedAddresses}| Avg: {requestCount / elapsedSeconds:F2} req/sec {generatedAddresses / elapsedSeconds:F2} addr/sec";
+            while (true)
+            {        
+                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+                object stats = new
+                {
+                    reqProcessed = $"{Interlocked.CompareExchange(ref requestCount, 0, 0)}",
+                    addrGenerated = $"{Interlocked.CompareExchange(ref generatedAddresses, 0, 0)}",
+                    avgRequests = $"{(elapsedSeconds == 0 ? 0 : Interlocked.CompareExchange(ref requestCount, 0, 0) / elapsedSeconds):F2}",
+                    avgAddresses = $"{(elapsedSeconds == 0 ? 0 : Interlocked.CompareExchange(ref generatedAddresses, 0, 0) / elapsedSeconds):F2}"
+                };
 
-            object stats = new
-            {
-                reqProcessed = $"{requestCount}",
-                addrGenerated = $"{generatedAddresses}",
-                avgRequests = $"{requestCount / elapsedSeconds:F2}",
-                avgAddresses = $"{generatedAddresses / elapsedSeconds:F2}"
-            };
-
-           AuxDataPipe.Write(JsonSerializer.Serialize(stats));
-        }, null, 0, 1000);
-
+                string jsonData = JsonSerializer.Serialize(stats).Trim();
+                await AuxDataPipe.Write(jsonData);
+                await Task.Delay(1000); // Ожидание 1 секунда перед следующим вызовом
+            } 
+        });
        
 
         using (SemaphoreSlim semaphore = new SemaphoreSlim(maxThreads))
@@ -179,7 +181,7 @@ class Program
                                 string result = JsonSerializer.Serialize(new { Address = AS_Dictionary.ElementAt(index).Key, Balance = balance, PrivateKey = strPrivateKey, Token = "ETH" });
                                 results.Add(result);
                                 // Отправляем данные администратору
-                                // ResultsDataPipe => electronIPC => ReactRenderComponent
+                                // Results => api/send-results => api/throw-data-to-client => ReactComponent    
                             }
                         }
                     }
